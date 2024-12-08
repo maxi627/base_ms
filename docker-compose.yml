@@ -1,0 +1,25 @@
+
+services:
+  db:
+    image: postgres:15.6
+    container_name: ecomercedb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}        
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} 
+      POSTGRES_DB: ${POSTGRES_DB}       
+      POSTGRES_PORT: ${POSTGRES_PORT}
+    env_file:
+      - .env                                    # Ruta del archivo .env
+    ports:
+      - "5433:5433"                                # Expone el puerto PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data     # Volumen persistente para la base de datos
+    networks:
+      - red1                                       # Red externa compartida
+
+volumes:
+  postgres_data:                                    # Definición del volumen para persistencia de datos
+
+networks:
+  red1:
+    external: true                                 # Usa la red externa definida previamente

@@ -1,10 +1,6 @@
-from . import CatalogoService, CompraService, PagoService, InventarioService, SagaBuilder
+
 from app import cache
 
-catalogo_service = CatalogoService()
-compra_service = CompraService()
-pago_service = PagoService()
-inventario_service = InventarioService()
 
 class ProductoService:
 
@@ -14,7 +10,7 @@ class ProductoService:
             producto = cache.get(f"producto_{id_producto}")
             if producto is None:
                 # Obtener el producto del servicio de catálogo
-                producto = catalogo_service.obtener_producto(id_producto)
+                producto = stock_service.obtener_producto(id_producto)
                 if producto is None:
                     return None
                 # Serializar y almacenar el producto en caché

@@ -1,9 +1,7 @@
 import requests
 from tenacity import retry, stop_after_attempt, wait_random
 from flask import current_app
-from app.mapping import ProductoSchema
 
-schema = ProductoSchema()
 
 class StockService:
 

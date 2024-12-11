@@ -17,5 +17,5 @@ app.config.from_object(config)
 db = SQLAlchemy(app)
 
 if __name__ == "__main__":
-    # Inicia la app para pruebas locales (opcional)
-    app.run(host="0.0.0.0", port=5001)
+    # Inicia la app para pruebas locales 
+    app.run(host="0.0.0.0", port=5005)

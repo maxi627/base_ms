@@ -1,13 +1,15 @@
 import requests
 from flask import current_app
 
+
 class PagoService:
 
     def agregar_pago(self, data):
         try:
             # Enviar datos al servicio externo de pagos
             data_pago = data.get('pago')
-            response = requests.post(current_app.config['PAGOS_URL'], json=data_pago)
+              #TODO: verificar el estatus code que devuelve para ver si se compensa o no.
+            response = requests.post(current_app.config['PAGOS_URL'], json=data_pago,verify=False)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:

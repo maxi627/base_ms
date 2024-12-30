@@ -1,11 +1,14 @@
 from typing import List
 from app.services import CompraService, PagoService, StockService
 
-# Servicios instanciados
+
+#TODO: Servicios instanciados globalmente, que pasa sí un hilo se utiliza antes de cerrarse la petición
+
 compra_service = CompraService()
 pago_service = PagoService()
 stock_service = StockService()
 
+#TODO: ver el limiter y agregarlo al principio (probar  con 50 peticiones por segundo)
 class Action:
     def __init__(self, action, compensation):
         self.action = action

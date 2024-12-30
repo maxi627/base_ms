@@ -2,11 +2,12 @@ import requests
 from flask import current_app
 
 class CompraService:
-
+#TODO: aplicar retry
     def comprar(self, data):
         try:
             data_compra = data.get('compra')
-            response = requests.post(current_app.config['COMPRAS_URL'], json=data_compra)
+            #TODO: verificar el estatus code que devuelve para ver si se compensa o no.
+            response = requests.post(current_app.config['COMPRAS_URL'], json=data_compra,verify=False)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -21,3 +22,4 @@ class CompraService:
             return True
         except requests.RequestException as e:
             raise Exception(f"Error deleting compra with id {id_compra}: {e}")
+

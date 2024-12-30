@@ -1,6 +1,9 @@
 from app.services.saga_orchestrator import SagaBuilder
 saga_builder = SagaBuilder()
 
+#TODO: en vez de funciones usar clases con metodos estaticos
+
+
 # Acción de agregar pago
 saga_builder.action(
     action=lambda data: pago_service.agregar_pago(data),
@@ -28,4 +31,6 @@ saga = saga_builder.set_data({
 
 # Ejecutar la saga
 response = saga.execute()
+#TODO: no usar print, usar logging para mostrar informacion en consola
 print(response)
+

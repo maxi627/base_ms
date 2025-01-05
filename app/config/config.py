@@ -6,8 +6,13 @@ from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, "..", ".env"))  # Ajusta la ruta según tu estructura
 
+
 class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    PAGOS_URL = os.getenv('PAGOS_URL')
+    STOCK_URL = os.getenv('STOCK_URL')
+    COMPRAS_URL = os.getenv('COMPRAS_URL')
+    PRODUCTO_URL = os.getenv('PRODUCTO_URL')
     
     @staticmethod
     def init_app(app):

@@ -34,3 +34,24 @@ response = saga.execute()
 #TODO: no usar print, usar logging para mostrar informacion en consola
 print(response)
 
+
+
+#EJEMPLO DE AÑADIR LOGGING
+
+
+
+
+# import logging
+
+# # Configurar el logger
+# logging.basicConfig(
+#     level=logging.INFO,  # Nivel de log (puede ajustarse a DEBUG, WARNING, ERROR, etc.)
+#     format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del mensaje
+#     datefmt='%Y-%m-%d %H:%M:%S',  # Formato de la fecha
+# )
+
+# # Ejecutar la saga
+# response = saga.execute()
+
+# # Usar logging para mostrar la información
+# logging.info(f"Saga response: {response}")

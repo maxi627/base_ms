@@ -14,3 +14,5 @@ sqlalchemy-easy-softdelete==0.8.3
 Flask-jwt-extended==4.6.0
 Flask-Caching
 redis
+tenacity
+limits

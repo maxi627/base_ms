@@ -1,7 +1,8 @@
 
 #TODO: aplicar retry
 
-            #TODO: verificar el estatus code que devuelve para ver si se compensa o no.
+#TODO: verificar el estatus code que devuelve para ver si se compensa o no.
+
 import requests
 import logging
 from flask import current_app
@@ -12,7 +13,7 @@ logging.basicConfig(
     level=logging.INFO,  # Cambia a DEBUG para mayor detalle
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger(__name__)  # Nombre del logger, generalmente el nombre del módulo
+logger = logging.getLogger(__name__)  # Logger específico para este módulo
 
 class CompraService:
     """
@@ -28,22 +29,22 @@ class CompraService:
         """
         Realiza una compra enviando una solicitud POST al servicio de compras.
         :param data: Diccionario con los datos de la compra.
-        :return: Respuesta JSON del servicio de compras.
+        :return: (URL del servicio, Respuesta JSON del servicio de compras).
         :raises Exception: Si ocurre un error en la solicitud.
         """
         try:
             logger.info("Iniciando el proceso de compra con datos: %s", data)
             data_compra = data.get('compra')
+            url = current_app.config['COMPRAS_URL']
             response = requests.post(
-                current_app.config['COMPRAS_URL'],
+                url,
                 json=data_compra,
                 verify=False  # Cambiar a True en producción
             )
-
-            # Verificar el código de estado
+    
             if response.status_code == 201:
                 logger.info("Compra realizada con éxito: %s", response.json())
-                return response.json()
+                return url, response.json()  # <--- Devuelve la URL también
             elif response.status_code == 409:
                 logger.warning("Conflicto: la compra ya existe.")
                 raise Exception("Compra ya existe (conflicto).")
@@ -53,7 +54,7 @@ class CompraService:
             else:
                 logger.error("Error inesperado: %s - %s", response.status_code, response.text)
                 raise Exception(f"Error inesperado: {response.status_code} - {response.text}")
-
+    
         except requests.RequestException as e:
             logger.exception("Error de red durante la compra.")
             raise Exception(f"Error al realizar la compra: {str(e)}")

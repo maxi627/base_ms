@@ -22,7 +22,7 @@ class StockService:
         """
         Agrega stock mediante una solicitud al servicio externo.
         :param data: Diccionario con los datos del stock.
-        :return: Respuesta JSON del servicio de stock.
+        :return: Respuesta JSON del servicio de stock y la URL.
         :raises Exception: Si ocurre un error en la solicitud.
         """
         try:
@@ -37,7 +37,9 @@ class StockService:
             response.raise_for_status()
 
             logger.info("Stock agregado con éxito. Respuesta: %s", response.json())
-            return response.json()
+            
+            # Ahora devolvemos tanto la respuesta como la URL
+            return current_app.config['STOCK_URL'], response.json()
 
         except requests.RequestException as e:
             logger.exception("Error al agregar stock.")
@@ -75,3 +77,26 @@ class StockService:
         except requests.RequestException as e:
             logger.exception("Error al eliminar stock con ID %s.", id_stock)
             raise Exception(f"Error al eliminar stock con ID {id_stock}: {str(e)}")
+
+    def revertir_stock(self, producto_id, cantidad):
+        """
+        Reintegra stock en caso de fallo en la saga.
+        """
+        try:
+            logger.info(f"Reintegrando {cantidad} unidades al producto {producto_id}")
+
+            response = requests.put(
+                f"{current_app.config['STOCK_URL']}/revertir",
+                json={"producto_id": producto_id, "cantidad": cantidad},
+                verify=False
+            )
+
+            if response.status_code == 200:
+                logger.info(f"Stock reintegrado para producto {producto_id}")
+                return response.json()
+            else:
+                raise Exception(f"Error al revertir stock: {response.status_code} - {response.text}")
+
+        except requests.RequestException as e:
+            logger.exception(f"Error al revertir stock del producto {producto_id}.")
+            raise

@@ -5,6 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from app.config import cache_config, factory
 import redis
 import logging
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)

@@ -39,23 +39,16 @@ def crear_compra_action(data):
         logger.error(f"Error en crear compra: {e}")
         raise
 
-# Paso 3: Acción de Agregar Stock
+
 def agregar_stock_action(data):
     try:
-        # Simulando un error
-        raise Exception("Error simulado en StockService")
+        logger.info("Iniciando acción de agregar stock.")
+        stock_service = StockService()
+        result = stock_service.agregar_stock(data)
+        return result[0], result[1]  # Asegúrate de que se devuelven URL y data
     except Exception as e:
         logger.error(f"Error en agregar stock: {e}")
         raise
-# def agregar_stock_action(data):
-#     try:
-#         logger.info("Iniciando acción de agregar stock.")
-#         stock_service = StockService()
-#         result = stock_service.agregar_stock(data)
-#         return result[0], result[1]  # Asegúrate de que se devuelven URL y data
-#     except Exception as e:
-#         logger.error(f"Error en agregar stock: {e}")
-#         raise
 
 # Paso 4: Compensación de Pago
 def compensar_pago_action(id_pago):
@@ -107,6 +100,7 @@ saga = Saga(acciones, datos_saga)
 # Ejecutar la saga dentro de un contexto de aplicación
 with app.app_context():
     response = saga.execute()
+
 
 # Mostrar la respuesta final de la saga
 logger.info(f"Respuesta final de la saga: {response}")

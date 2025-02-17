@@ -2,31 +2,37 @@
 
 
 #TODO: ver el limiter y agregarlo al principio (probar  con 50 peticiones por segundo)
-from flask import Flask
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-import requests
 import logging
-from response_message import ResponseBuilder
-from typing import List
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, before_sleep_log
+import requests
+from flask import Flask
 
+# Crear app de Flask
 app = Flask(__name__)
 
-# Crear Limiter sin 'key_func' al inicio
-limiter = Limiter(key_func=get_remote_address)
-
-# Inicializar Limiter con la app
-limiter.init_app(app)
-
 # Configurar Logger
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  # Cambiar a INFO para menos verbosidad
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
-@limiter.limit("50 per second")
-def hacer_peticion_limited(url, data):
-    """Realiza una petición HTTP POST con limitación de tasa."""
+# Configuración para los reintentos con Tenacity
+@retry(
+    retry=retry_if_exception_type(requests.RequestException),
+    wait=wait_fixed(2),  # Espera 2 segundos entre intentos
+    stop=stop_after_attempt(3),  # Máximo 3 intentos
+    reraise=True,
+    before_sleep=before_sleep_log(logger, logging.INFO)  # Mostrar reintentos como INFO
+)
+def hacer_peticion(url, data):
+    """Realiza una petición HTTP POST con reintentos."""  
     try:
+        logger.info(f"Enviando petición a {url} con datos: {data}")
         response = requests.post(url, json=data)
+        response.raise_for_status()  # Lanza error si falla
         return response
     except requests.RequestException as e:
         logger.error(f"Error en la petición a {url}: {e}")
@@ -51,15 +57,14 @@ class Action:
 
 class Saga:
     """Orquestador de la saga: ejecuta y compensa si falla."""
-    def __init__(self, actions: List[Action], data):
+    def __init__(self, actions, data):
         self.actions = actions
         self.data = data
         self.IDs = []
-        self.response = ResponseBuilder()
+        self.response = {"message": "OK", "status_code": 201, "data": {"message": "Operación realizada con éxito"}}
 
     def execute(self):
         """Ejecuta la saga en orden y maneja la compensación en caso de fallo."""
-        self.response.add_status_code(201).add_message("OK").add_data({"message": "Operación realizada con éxito"})
         saga_data = self.data.copy()
 
         for index, action in enumerate(self.actions):
@@ -81,25 +86,26 @@ class Saga:
                     datos_a_enviar = saga_data["stock"]
         
                 with app.test_request_context():
-                    response = hacer_peticion_limited(url, datos_a_enviar)
+                    response = hacer_peticion(url, datos_a_enviar)
         
                 if response.status_code == 201:
                     logger.info(f"ID generado: {id_generado}")
                 else:
-                    self.response.add_status_code(response.status_code) \
-                                 .add_message(response.json().get('message')) \
-                                 .add_data(response.json().get('data'))
+                    self.response["status_code"] = response.status_code
+                    self.response["message"] = response.json().get('message')
+                    self.response["data"] = response.json().get('data')
                     self.compensate(index)
                     break
                 
             except Exception as e:
-                self.response.add_status_code(500).add_message("Error durante la ejecución de la saga").add_data({"error": str(e)})
+                self.response["status_code"] = 500
+                self.response["message"] = "Error durante la ejecución de la saga"
+                self.response["data"] = {"error": str(e)}
                 self.compensate(index)
                 break
-            
-                    
-        logger.debug(f"Estado final de IDs: {self.IDs}")
-        return self.response.build()
+        
+        logger.info(f"Estado final de IDs: {self.IDs}")
+        return self.response
 
     def compensate(self, index):
         """Compensa todas las acciones previas en orden inverso"""
@@ -115,7 +121,6 @@ class Saga:
 
         except Exception as e:
             logger.exception(f"Error en la compensación: {e}")
-
 
 if __name__ == "__main__":
     app.run(debug=True)

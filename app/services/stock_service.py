@@ -1,6 +1,6 @@
 import logging
 import requests
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, before_sleep_log
 from flask import current_app
 
 # Configuración del logger
@@ -16,19 +16,20 @@ class StockService:
         retry=retry_if_exception_type(requests.RequestException),
         wait=wait_fixed(2),  # Espera fija de 2 segundos entre intentos
         stop=stop_after_attempt(3),  # Máximo 3 intentos
-        reraise=True
+        reraise=True,
+        before_sleep=before_sleep_log(logger, logging.WARNING)  # Log antes de cada reintento
     )
     def agregar_stock(self, data):
         """
-        Agrega stock mediante una solicitud al servicio externo.
+        Agrega stock mediante una solicitud al servicio externo con reintentos.
         :param data: Diccionario con los datos del stock.
         :return: Respuesta JSON del servicio de stock y la URL.
         :raises Exception: Si ocurre un error en la solicitud.
         """
-        try:
-            logger.info("Enviando solicitud para agregar stock: %s", data)
-            data_stock = data.get('stock')
+        logger.info("Intentando agregar stock: %s", data)
 
+        try:
+            data_stock = data.get('stock')
             response = requests.post(
                 current_app.config['STOCK_URL'],
                 json=data_stock,
@@ -37,13 +38,11 @@ class StockService:
             response.raise_for_status()
 
             logger.info("Stock agregado con éxito. Respuesta: %s", response.json())
-            
-            # Ahora devolvemos tanto la respuesta como la URL
             return current_app.config['STOCK_URL'], response.json()
 
         except requests.RequestException as e:
-            logger.exception("Error al agregar stock.")
-            raise Exception(f"Error al agregar stock: {str(e)}")
+            logger.warning("Fallo al agregar stock. Lanzando reintento...")
+            raise
 
     @retry(
         retry=retry_if_exception_type(requests.RequestException),
@@ -58,9 +57,10 @@ class StockService:
         :return: True si el stock fue eliminado, False si no se encontró.
         :raises Exception: Si ocurre un error en la solicitud.
         """
-        try:
-            logger.info("Enviando solicitud para eliminar stock con ID: %s", id_stock)
+        intento_actual = getattr(self.borrar_stock, "retry.statistics", {}).get("attempt_number", 1)
+        logger.info(f"[Intento {intento_actual}/3] Enviando solicitud para eliminar stock con ID: {id_stock}")
 
+        try:
             response = requests.delete(
                 f"{current_app.config['STOCK_URL']}/{id_stock}",
                 verify=False  # Cambiar a True y configurar certificados en producción.

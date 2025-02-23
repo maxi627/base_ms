@@ -7,8 +7,29 @@ import redis
 import logging
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+import requests
+import pybreaker
 
-# Configuración de logging
+# Configuracion global de circuito breaker
+circuit_breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)  # Configuración: 3 fallos antes de abrir
+
+def obtener_circuit_breaker():
+    return circuit_breaker
+#configuracion global de retry
+def retry_logic(func):
+    """
+    Aplica la lógica de retry a una función.
+    """
+    return retry(
+        retry=retry_if_exception_type(requests.RequestException),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        reraise=True
+    )(func)
+
+
+# Configuración global de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

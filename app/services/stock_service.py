@@ -1,24 +1,23 @@
 import logging
 import requests
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, before_sleep_log
 from flask import current_app
-
+from app import retry_logic  # Importar la lógica de retry
+from app import obtener_circuit_breaker  # Importar el circuito breaker
 # Configuración del logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Obtener el objeto de CircuitBreaker
+circuit_breaker = obtener_circuit_breaker()
+
 
 class StockService:
     """
     Servicio para interactuar con el sistema de stock externo.
     """
 
-    @retry(
-        retry=retry_if_exception_type(requests.RequestException),
-        wait=wait_fixed(2),  # Espera fija de 2 segundos entre intentos
-        stop=stop_after_attempt(3),  # Máximo 3 intentos
-        reraise=True,
-        before_sleep=before_sleep_log(logger, logging.WARNING)  # Log antes de cada reintento
-    )
+    @retry_logic
+    @circuit_breaker
     def agregar_stock(self, data):
         """
         Agrega stock mediante una solicitud al servicio externo con reintentos.
@@ -44,12 +43,8 @@ class StockService:
             logger.warning("Fallo al agregar stock. Lanzando reintento...")
             raise
 
-    @retry(
-        retry=retry_if_exception_type(requests.RequestException),
-        wait=wait_fixed(2),  # Espera fija de 2 segundos entre intentos
-        stop=stop_after_attempt(3),  # Máximo 3 intentos
-        reraise=True
-    )
+    @retry_logic
+    @circuit_breaker
     def borrar_stock(self, id_stock):
         """
         Elimina un stock mediante una solicitud al servicio externo.
@@ -78,6 +73,8 @@ class StockService:
             logger.exception("Error al eliminar stock con ID %s.", id_stock)
             raise Exception(f"Error al eliminar stock con ID {id_stock}: {str(e)}")
 
+    @retry_logic
+    @circuit_breaker
     def revertir_stock(self, producto_id, cantidad):
         """
         Reintegra stock en caso de fallo en la saga.

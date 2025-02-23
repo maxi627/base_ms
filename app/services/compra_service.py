@@ -6,7 +6,8 @@
 import requests
 import logging
 from flask import current_app
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+from app import retry_logic  # Importar la lógica de retry
+from app import obtener_circuit_breaker  # Importar el circuito breaker
 
 # Configuración básica de logging
 logging.basicConfig(
@@ -15,16 +16,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)  # Logger específico para este módulo
 
+# Obtener el objeto de CircuitBreaker
+circuit_breaker = obtener_circuit_breaker()
+
 class CompraService:
     """
     Servicio para interactuar con el microservicio de compras.
     """
 
-    @retry(
-        retry=retry_if_exception_type(requests.RequestException),
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(2)
-    )
+    @retry_logic
+    @circuit_breaker
     def comprar(self, data):
         """
         Realiza una compra enviando una solicitud POST al servicio de compras.
@@ -59,6 +60,9 @@ class CompraService:
             logger.exception("Error de red durante la compra.")
             raise Exception(f"Error al realizar la compra: {str(e)}")
 
+
+    @retry_logic
+    @circuit_breaker
     def borrar_compra(self, id_compra):
         """
         Envía una solicitud DELETE al servicio de compras para borrar una compra específica.

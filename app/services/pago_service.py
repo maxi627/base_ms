@@ -4,17 +4,18 @@ import requests
 import logging
 from flask import current_app
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+from app import retry_logic  # Importar la lógica de retry
+from app import obtener_circuit_breaker  # Importar el circuito breaker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Obtener el objeto de CircuitBreaker
+circuit_breaker = obtener_circuit_breaker()
+
 class PagoService:
-    @retry(
-        retry=retry_if_exception_type(requests.RequestException),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        stop=stop_after_attempt(3),
-        reraise=True
-    )
+    @retry_logic
+    @circuit_breaker
     def agregar_pago(self, data):
         try:
             data_pago = data.get('pago')
@@ -27,6 +28,8 @@ class PagoService:
             logger.exception("Error al agregar el pago.")
             raise
 
+    @retry_logic
+    @circuit_breaker
     def _realizar_pago(self, data_pago):
         url = current_app.config['PAGOS_URL']
         response = requests.post(url, json=data_pago, verify=False)

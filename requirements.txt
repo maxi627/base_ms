@@ -17,3 +17,4 @@ redis
 tenacity
 limits
 flask-limiter
+pybreaker

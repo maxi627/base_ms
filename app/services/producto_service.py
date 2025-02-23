@@ -1,19 +1,18 @@
-import requests
 import logging
 from flask import current_app
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
-
+from app import retry_logic  # Importar la lógica de retry
+from app import obtener_circuit_breaker  # Importar el circuito breaker
+import requests
 # Configurar logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Obtener el objeto de CircuitBreaker
+circuit_breaker = obtener_circuit_breaker()
+
 class ProductoService:
-    @retry(
-        retry=retry_if_exception_type(requests.RequestException),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        stop=stop_after_attempt(3),
-        reraise=True
-    )
+    @retry_logic
+    @circuit_breaker
     def obtener_producto(self, producto_id):
         """
         Obtiene información de un producto por su ID.
@@ -35,12 +34,8 @@ class ProductoService:
             logger.exception("Error al obtener el producto.")
             raise
 
-    @retry(
-        retry=retry_if_exception_type(requests.RequestException),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        stop=stop_after_attempt(3),
-        reraise=True
-    )
+    @retry_logic
+    @circuit_breaker
     def validar_disponibilidad(self, producto_id, cantidad):
         """
         Verifica si hay suficiente stock de un producto antes de realizar una compra.

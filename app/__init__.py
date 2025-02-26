@@ -5,8 +5,6 @@ from flask_sqlalchemy import SQLAlchemy
 from app.config import cache_config, factory
 import redis
 import logging
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 import requests
 import pybreaker
@@ -69,11 +67,6 @@ def create_app():
     except Exception as e:
         raise RuntimeError(f"Error al inicializar extensiones: {e}")
 
-    # try:
-    #     from app.routes import Producto
-    #     app.register_blueprint(Producto, url_prefix='/api/v1')
-    # except Exception as e:
-    #     raise RuntimeError(f"Error al registrar blueprints: {e}")
 
     # Ruta de prueba
     @app.route('/ping', methods=['GET'])

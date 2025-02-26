@@ -16,5 +16,4 @@ Flask-Caching
 redis
 tenacity
 limits
-flask-limiter
 pybreaker

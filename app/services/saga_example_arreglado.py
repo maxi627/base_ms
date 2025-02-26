@@ -91,7 +91,7 @@ acciones = [
 datos_saga = {
     "pago": {"precio": 100, "medio_pago": "tarjeta de credito", "producto_id": 1},
     "compra": {"producto_id": 1, "fecha_compra": "2025-01-23T10:00:00", "direccion_envio": "Calle 123"},
-    "stock": {"producto_id": 1, "cantidad": 1, "entrada_salida": 1, "fecha_transaccion": "2025-01-23T10:00:00"}
+    "stock": {"producto_id": 1, "cantidad": 10, "entrada_salida": 1, "fecha_transaccion": "2025-01-23T10:00:00"}
 }
 
 # Crear la saga

@@ -3,9 +3,11 @@
 
 #TODO: ver el limiter y agregarlo al principio (probar  con 50 peticiones por segundo)
 import logging
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, before_sleep_log
+
 import requests
 from flask import Flask
+from tenacity import (before_sleep_log, retry, retry_if_exception_type,
+                      stop_after_attempt, wait_fixed)
 
 # Crear app de Flask
 app = Flask(__name__)

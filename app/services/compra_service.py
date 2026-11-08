@@ -1,8 +1,3 @@
-
-#TODO: aplicar retry
-
-#TODO: verificar el estatus code que devuelve para ver si se compensa o no.
-
 import requests
 import logging
 from flask import current_app
@@ -17,7 +12,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)  # Logger específico para este módulo
 
 # Obtener el objeto de CircuitBreaker
-circuit_breaker = obtener_circuit_breaker()
+circuit_breaker = obtener_circuit_breaker("compra")
 
 class CompraService:
     """
@@ -31,7 +26,8 @@ class CompraService:
         Realiza una compra enviando una solicitud POST al servicio de compras.
         :param data: Diccionario con los datos de la compra.
         :return: (URL del servicio, Respuesta JSON del servicio de compras).
-        :raises Exception: Si ocurre un error en la solicitud.
+        :raises requests.RequestException: Ante errores de red (se reintenta).
+        :raises Exception: Si el servicio rechaza la compra.
         """
         try:
             logger.info("Iniciando el proceso de compra con datos: %s", data)
@@ -42,7 +38,7 @@ class CompraService:
                 json=data_compra,
                 verify=False  # Cambiar a True en producción
             )
-    
+
             if response.status_code == 201:
                 logger.info("Compra realizada con éxito: %s", response.json())
                 return url, response.json()  # <--- Devuelve la URL también
@@ -51,14 +47,15 @@ class CompraService:
                 raise Exception("Compra ya existe (conflicto).")
             elif response.status_code == 422:
                 logger.warning("Datos inválidos enviados: %s", response.json())
-                raise Exception(f"Datos inválidos: {response.json().get('errors', 'No especificado')}")
+                raise Exception(f"Datos inválidos: {response.json().get('data', 'No especificado')}")
             else:
                 logger.error("Error inesperado: %s - %s", response.status_code, response.text)
                 raise Exception(f"Error inesperado: {response.status_code} - {response.text}")
-    
-        except requests.RequestException as e:
+
+        except requests.RequestException:
+            # Se relanza tal cual para que retry_logic pueda reintentar.
             logger.exception("Error de red durante la compra.")
-            raise Exception(f"Error al realizar la compra: {str(e)}")
+            raise
 
 
     @retry_logic
@@ -80,13 +77,14 @@ class CompraService:
             if response.status_code == 404:
                 logger.warning("Compra con ID %s no encontrada.", id_compra)
                 return False
-            elif response.status_code == 204:
+            elif response.status_code in (200, 204):  # ms_compra responde 200
                 logger.info("Compra con ID %s eliminada con éxito.", id_compra)
                 return True
             else:
                 logger.error("Error inesperado al borrar la compra: %s - %s", response.status_code, response.text)
                 raise Exception(f"Error inesperado al borrar la compra: {response.status_code} - {response.text}")
 
-        except requests.RequestException as e:
+        except requests.RequestException:
+            # Se relanza tal cual para que retry_logic pueda reintentar.
             logger.exception("Error de red al borrar la compra con ID %s.", id_compra)
-            raise Exception(f"Error al borrar la compra con ID {id_compra}: {str(e)}")
+            raise

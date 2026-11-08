@@ -106,7 +106,12 @@ sequenceDiagram
 | 2 | `CompraService.comprar` → `POST {COMPRAS_URL}` | `DELETE {COMPRAS_URL}/{id}` |
 | 3 | `StockService.agregar_stock` → `POST {STOCK_URL}` | `DELETE {STOCK_URL}/{id}` |
 
-Además, `ProductoService` permite obtener un producto (`GET {PRODUCTO_URL}/{id}`) y `StockService.revertir_stock` permite reintegrar unidades.
+Cada paso hace **un solo** POST al microservicio. Si un paso falla, se compensan en orden inverso solo los pasos que se completaron, y si una compensación falla se sigue con las demás.
+
+Además:
+
+- `ProductoService.obtener_producto` devuelve un producto (`GET {PRODUCTO_URL}/{id}`).
+- `ProductoService.validar_disponibilidad(producto_id, cantidad)` verifica que el producto exista, esté activado y tenga stock suficiente. El stock disponible lo calcula `StockService.obtener_disponible` con los movimientos de ms_stock: entradas menos salidas.
 
 ### Código
 
@@ -131,7 +136,7 @@ main.py                          # App Flask mínima en el puerto 5005 para prue
 | Mecanismo | Librería | Configuración |
 |---|---|---|
 | Retry | `tenacity` | 3 intentos, espera exponencial entre 2 y 10 s, solo ante `requests.RequestException` |
-| Circuit breaker | `pybreaker` | Se abre después de 3 fallos seguidos y se vuelve a probar a los 30 s. Una sola instancia compartida por todos los clientes |
+| Circuit breaker | `pybreaker` | Se abre después de 3 fallos seguidos y se vuelve a probar a los 30 s. Hay **uno por microservicio**: si se cae ms_stock, siguen funcionando las llamadas (y compensaciones) a ms_compra y ms_pagos |
 | Rate limiting | (en cada microservicio) | Flask-Limiter con Redis como backend |
 
 ## Configuración
@@ -174,13 +179,11 @@ docker compose up -d
 # Orquestador (local, con el resto del ecosistema levantado)
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt requests
+pip install -r requirements.txt
 
 # Ejecutar la Saga de ejemplo (desde la raíz del repo)
 python -m app.services.saga_example_arreglado
 ```
-
-`requests` se instala aparte porque todavía no figura en `requirements.txt`.
 
 El ejemplo envía estos datos:
 
@@ -197,6 +200,4 @@ Si Python no encuentra el módulo `app`, agregar la raíz del repo al `PYTHONPAT
 ## Pendientes
 
 - Mover el circuit breaker a la configuración de Traefik (middleware en los compose) en lugar de usarlo como librería.
-- Agregar `PagoService.borrar_pago`, que usa la compensación del ejemplo.
 - Configurar los certificados de **mkcert** para probar HTTPS en local (ver [servicios](https://github.com/maxi627/servicios)).
-- Revisar que los servicios no queden instanciados globalmente entre peticiones.

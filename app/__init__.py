@@ -9,11 +9,15 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 import requests
 import pybreaker
 
-# Configuracion global de circuito breaker
-circuit_breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)  # Configuración: 3 fallos antes de abrir
+# Configuracion de circuit breaker: uno por microservicio, para que la caída de uno
+# no abra el circuito de los demás (y no bloquee las compensaciones de la saga).
+_circuit_breakers = {}
 
-def obtener_circuit_breaker():
-    return circuit_breaker
+def obtener_circuit_breaker(nombre="default"):
+    if nombre not in _circuit_breakers:
+        # Configuración: 3 fallos antes de abrir, se vuelve a probar a los 30 s
+        _circuit_breakers[nombre] = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30, name=nombre)
+    return _circuit_breakers[nombre]
 #configuracion global de retry
 def retry_logic(func):
     """

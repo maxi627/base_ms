@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Obtener el objeto de CircuitBreaker
-circuit_breaker = obtener_circuit_breaker()
+circuit_breaker = obtener_circuit_breaker("stock")
 
 
 class StockService:
@@ -69,9 +69,35 @@ class StockService:
             logger.info("Stock con ID %s eliminado con éxito.", id_stock)
             return True
 
-        except requests.RequestException as e:
+        except requests.RequestException:
+            # Se relanza tal cual para que retry_logic pueda reintentar.
             logger.exception("Error al eliminar stock con ID %s.", id_stock)
-            raise Exception(f"Error al eliminar stock con ID {id_stock}: {str(e)}")
+            raise
+
+    @retry_logic
+    @circuit_breaker
+    def obtener_disponible(self, producto_id):
+        """
+        Calcula el stock disponible de un producto a partir de sus movimientos
+        en ms_stock: suma las entradas (entrada_salida = 1) y resta las salidas (= 2).
+        :param producto_id: ID del producto.
+        :return: Cantidad disponible.
+        """
+        response = requests.get(current_app.config['STOCK_URL'], verify=False)
+        response.raise_for_status()
+
+        movimientos = response.json().get("data") or []
+        disponible = 0
+        for movimiento in movimientos:
+            if movimiento.get("producto_id") != producto_id:
+                continue
+            if movimiento.get("entrada_salida") == 1:
+                disponible += movimiento.get("cantidad", 0)
+            elif movimiento.get("entrada_salida") == 2:
+                disponible -= movimiento.get("cantidad", 0)
+
+        logger.info(f"Stock disponible del producto {producto_id}: {disponible}")
+        return disponible
 
     @retry_logic
     @circuit_breaker
